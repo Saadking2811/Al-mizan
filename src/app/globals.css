@@ -1,0 +1,136 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy-900: #0F1B2D;
+    --royal-900: #1E3A5F;
+    --gold-500: #D4A84B;
+    --gold-600: #C4962C;
+    --bronze-900: #4A3816;
+    --ivory: #FAF8F0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-sans text-navy-900 antialiased;
+    background-color: #FAF8F0;
+  }
+
+  ::selection {
+    @apply bg-gold-500/30 text-navy-900;
+  }
+}
+
+@layer components {
+  /* ── Boutons Al-Mizan ──────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-gradient-to-r from-gold-600 to-gold-500
+           text-navy-900 font-semibold
+           px-6 py-3 rounded-xl
+           shadow-gold hover:shadow-lg
+           transition-all duration-300 ease-out
+           hover:scale-[1.02] hover:brightness-110
+           active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-navy-900 text-white font-semibold
+           px-6 py-3 rounded-xl
+           shadow-navy hover:shadow-lg
+           transition-all duration-300 ease-out
+           hover:bg-navy-800 hover:scale-[1.02]
+           active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2
+           border-2 border-gold-500 text-gold-600
+           font-semibold px-6 py-3 rounded-xl
+           transition-all duration-300 ease-out
+           hover:bg-gold-500 hover:text-navy-900
+           hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2
+           text-navy-900 font-medium px-4 py-2 rounded-lg
+           transition-all duration-200
+           hover:bg-navy-900/5;
+  }
+
+  /* ── Inputs ────────────────────────────────────────────── */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl
+           bg-white border border-navy-100
+           text-navy-900 placeholder:text-navy-300
+           focus:outline-none focus:ring-2 focus:ring-gold-500/40 focus:border-gold-500
+           transition-all duration-200;
+  }
+
+  /* ── Cards ─────────────────────────────────────────────── */
+  .card {
+    @apply bg-white rounded-2xl shadow-card
+           border border-navy-50/50
+           transition-all duration-300 ease-out
+           hover:shadow-card-hover;
+  }
+
+  /* ── Glass effect ──────────────────────────────────────── */
+  .glass {
+    @apply bg-white/10 backdrop-blur-lg
+           border border-white/20 rounded-2xl;
+  }
+
+  /* ── Section container ─────────────────────────────────── */
+  .section-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* ── Gold divider ──────────────────────────────────────── */
+  .divider-gold {
+    @apply h-px bg-gradient-to-r from-transparent via-gold-500 to-transparent;
+  }
+
+  /* ── Text gradient ─────────────────────────────────────── */
+  .text-gradient {
+    @apply bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400
+           bg-clip-text text-transparent;
+  }
+}
+
+/* ── Scrollbar personnalisé ────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF8F0;
+}
+::-webkit-scrollbar-thumb {
+  background: #C5CCD8;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9EABBE;
+}
+
+/* ── Animation classes ─────────────────────────────────────── */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
