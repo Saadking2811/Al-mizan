@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Sidebar from '@/components/layout/Sidebar';
 import { Toaster } from 'react-hot-toast';
 import { Bell, Search, Menu, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
   '/dashboard':              { title: 'Tableau de bord',  subtitle: "Vue d'ensemble de votre activité" },
@@ -19,15 +20,64 @@ const pageTitles: Record<string, { title: string; subtitle: string }> = {
   '/dashboard/profile':      { title: 'Profil',           subtitle: 'Vos informations personnelles' },
   '/dashboard/settings':     { title: 'Paramètres',       subtitle: 'Configuration de votre espace' },
   '/dashboard/admin/users':  { title: 'Utilisateurs',     subtitle: 'Gestion des accès' },
+  '/dashboard/admin/permissions': { title: 'Roles & permissions', subtitle: 'Gestion des droits d accès' },
+  '/dashboard/admin/organizations': { title: 'Organisations', subtitle: 'Gestion des organismes' },
   '/dashboard/admin/audit':  { title: 'Audit',            subtitle: "Journal d'activité" },
+};
+
+const getRequiredAdminPermission = (path: string) => {
+  if (path.startsWith('/dashboard/admin/users')) {
+    return { module: 'users', action: 'read' as const };
+  }
+  if (path.startsWith('/dashboard/admin/organizations')) {
+    return { module: 'organizations', action: 'read' as const };
+  }
+  if (path.startsWith('/dashboard/admin/permissions')) {
+    return { module: 'settings', action: 'read' as const };
+  }
+  if (path.startsWith('/dashboard/admin/audit')) {
+    return { module: 'reports', action: 'read' as const };
+  }
+
+  return { module: 'settings', action: 'read' as const };
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user } = useAuthStore();
+  const router = useRouter();
+  const { user, isAuthenticated, initialized, initialize } = useAuthStore();
+  const { can, permissionsLoading } = usePermissions();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isAdminRoute = pathname.startsWith('/dashboard/admin');
+  const requiredAdminPermission = getRequiredAdminPermission(pathname);
+  const canAccessAdminRoute = !isAdminRoute || can(requiredAdminPermission.module, requiredAdminPermission.action);
 
   const pageInfo = pageTitles[pathname] ?? { title: 'Al-Mizan', subtitle: '' };
+
+  useEffect(() => {
+    if (!initialized) {
+      initialize();
+    }
+  }, [initialized, initialize]);
+
+  useEffect(() => {
+    if (!initialized) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      router.replace('/login');
+      return;
+    }
+
+    if (isAdminRoute && !permissionsLoading && !canAccessAdminRoute) {
+      router.replace('/dashboard');
+    }
+  }, [initialized, isAuthenticated, isAdminRoute, permissionsLoading, canAccessAdminRoute, router]);
+
+  if (!initialized || !isAuthenticated || (isAdminRoute && (permissionsLoading || !canAccessAdminRoute))) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

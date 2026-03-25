@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Mail, Lock, LogIn, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -30,15 +30,20 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Mode test : connexion directe même avec champs vides
-    try {
-      await login(formData.email || 'test@demo.dz', formData.password || 'demo123');
-      toast.success('Connexion réussie !');
-    } catch {
-      // Ignorer les erreurs API en mode test
+    if (!validate()) {
+      return;
     }
-    router.push('/dashboard');
+
+    try {
+      await login(formData.email, formData.password);
+      toast.success('Connexion réussie !');
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        'Email ou mot de passe invalide';
+      toast.error(message);
+    }
   };
 
   return (

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -16,10 +16,12 @@ import {
   LogOut,
   Shield,
   Users,
+  Building2,
   X,
   ChevronRight,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/auth';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const navItems = [
   { label: 'Tableau de bord', href: '/dashboard',              icon: LayoutDashboard },
@@ -30,9 +32,22 @@ const navItems = [
   { label: 'Notifications',    href: '/dashboard/notifications', icon: Bell },
 ];
 
-const adminItems = [
-  { label: 'Utilisateurs', href: '/dashboard/admin/users', icon: Users },
-  { label: 'Audit',        href: '/dashboard/admin/audit', icon: Shield },
+const managementItems = [
+  { label: 'Utilisateurs', href: '/dashboard/admin/users', icon: Users, module: 'users', action: 'read' as const },
+  {
+    label: 'Roles & permissions',
+    href: '/dashboard/admin/permissions',
+    icon: Shield,
+    module: 'settings',
+    action: 'read' as const,
+  },
+  {
+    label: 'Organisations',
+    href: '/dashboard/admin/organizations',
+    icon: Building2,
+    module: 'organizations',
+    action: 'read' as const,
+  },
 ];
 
 interface SidebarProps {
@@ -42,7 +57,10 @@ interface SidebarProps {
 
 export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuthStore();
+  const { can } = usePermissions();
+  const visibleManagementItems = managementItems.filter((item) => can(item.module, item.action));
 
   const isActive = (href: string) =>
     href === '/dashboard'
@@ -113,11 +131,12 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 pt-2 pb-2">Menu</p>
         {navItems.map((item) => <NavItem key={item.href} item={item} />)}
 
-        {/* Admin */}
-        <div className="pt-4">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 pb-2">Administration</p>
-          {adminItems.map((item) => <NavItem key={item.href} item={item} />)}
-        </div>
+        {visibleManagementItems.length > 0 && (
+          <div className="pt-4">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 pb-2">Gestion</p>
+            {visibleManagementItems.map((item) => <NavItem key={item.href} item={item} />)}
+          </div>
+        )}
       </nav>
 
       {/* '”€'”€ Bottom actions '”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€'”€ */}
@@ -129,7 +148,11 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
           </div>
         </Link>
         <button
-          onClick={() => { logout(); onMobileClose?.(); }}
+          onClick={() => {
+            logout();
+            onMobileClose?.();
+            router.push('/login');
+          }}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-red-900/40 hover:text-red-300 transition-all group"
         >
           <LogOut size={17} className="text-slate-400 group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" />

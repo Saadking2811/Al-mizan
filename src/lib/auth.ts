@@ -1,4 +1,6 @@
+import Cookies from 'js-cookie';
 import { create } from 'zustand';
+import api, { authApi } from '@/lib/api';
 
 /* ── Types ─────────────────────────────────────────────────── */
 export interface User {
@@ -9,46 +11,121 @@ export interface User {
   created_at: string;
 }
 
+interface RegisterPayload {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+  organization?: string;
+  wilaya?: string;
+}
+
 interface AuthState {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  initialized: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
+  initialize: () => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
 }
 
-/* ── Utilisateur de démo (mode test – pas d'API) ──────────── */
-const DEMO_USER: User = {
-  id: '1',
-  name: 'Administrateur Demo',
-  email: 'admin@almizan.dz',
-  role: 'admin',
-  created_at: new Date().toISOString(),
+const TOKEN_COOKIE = 'almizan_token';
+const REFRESH_COOKIE = 'almizan_refresh';
+
+const toUser = (raw: Partial<User> & { first_name?: string; last_name?: string; createdAt?: string }) => {
+  const firstName = raw.first_name || '';
+  const lastName = raw.last_name || '';
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  return {
+    id: String(raw.id || ''),
+    name: raw.name || fullName || 'Utilisateur',
+    email: raw.email || '',
+    role: String(raw.role || '').toUpperCase(),
+    created_at: raw.created_at || raw.createdAt || new Date().toISOString(),
+  } as User;
 };
 
 /* ── Store Zustand ─────────────────────────────────────────── */
 export const useAuthStore = create<AuthState>((set) => ({
-  // Mode test : authentifié par défaut avec un utilisateur de démo
-  user: DEMO_USER,
+  user: null,
   isLoading: false,
-  isAuthenticated: true,
+  isAuthenticated: false,
+  initialized: false,
 
-  login: async (_email, _password) => {
-    // Mode test : pas d'appel API, connexion immédiate
-    set({ user: DEMO_USER, isAuthenticated: true, isLoading: false });
+  login: async (email, password) => {
+    set({ isLoading: true });
+    try {
+      const { data } = await authApi.login(email, password);
+
+      const accessToken = data?.accessToken || data?.data?.access_token;
+      const refreshToken = data?.refreshToken || data?.data?.refresh_token;
+      const loginUser = data?.user || data?.data?.user;
+
+      if (accessToken) {
+        Cookies.set(TOKEN_COOKIE, accessToken, { expires: 1 / 24, sameSite: 'strict' });
+      }
+      if (refreshToken) {
+        Cookies.set(REFRESH_COOKIE, refreshToken, { expires: 7, sameSite: 'strict' });
+      }
+
+      // Prefer profile endpoint so UI has full user information.
+      try {
+        const profileRes = await api.get('/users/me');
+        set({ user: toUser(profileRes.data), isAuthenticated: true, isLoading: false, initialized: true });
+      } catch {
+        set({ user: toUser(loginUser || {}), isAuthenticated: true, isLoading: false, initialized: true });
+      }
+    } catch (error) {
+      Cookies.remove(TOKEN_COOKIE);
+      Cookies.remove(REFRESH_COOKIE);
+      set({ user: null, isAuthenticated: false, isLoading: false, initialized: true });
+      throw error;
+    }
   },
 
-  register: async (_name, _email, _password) => {
-    // Mode test : pas d'appel API
-    set({ user: DEMO_USER, isAuthenticated: true, isLoading: false });
+  register: async (payload) => {
+    set({ isLoading: true });
+    try {
+      // Keep register flexible for current gateway/auth implementation.
+      await authApi.register(payload.name, payload.email, payload.password);
+      set({ isLoading: false });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  initialize: async () => {
+    if (typeof window === 'undefined') {
+      set({ initialized: true });
+      return;
+    }
+
+    const token = Cookies.get(TOKEN_COOKIE);
+    if (!token) {
+      set({ user: null, isAuthenticated: false, initialized: true });
+      return;
+    }
+
+    try {
+      const profileRes = await api.get('/users/me');
+      set({ user: toUser(profileRes.data), isAuthenticated: true, initialized: true });
+    } catch {
+      Cookies.remove(TOKEN_COOKIE);
+      Cookies.remove(REFRESH_COOKIE);
+      set({ user: null, isAuthenticated: false, initialized: true });
+    }
   },
 
   logout: () => {
-    // Mode test : on reste connecté
-    set({ user: DEMO_USER, isAuthenticated: true });
+    Cookies.remove(TOKEN_COOKIE);
+    Cookies.remove(REFRESH_COOKIE);
+    set({ user: null, isAuthenticated: false, initialized: true });
   },
 
-  setUser: (user) => set({ user, isAuthenticated: true }),
+  setUser: (user) => set({ user, isAuthenticated: true, initialized: true }),
 }));

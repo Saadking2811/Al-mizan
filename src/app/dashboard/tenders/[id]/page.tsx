@@ -28,7 +28,6 @@ import {
   Share2,
   BookOpen,
   BarChart3,
-  BookOpen,
 } from 'lucide-react';
 
 const containerVariants = {
